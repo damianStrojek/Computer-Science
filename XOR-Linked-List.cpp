@@ -1,5 +1,6 @@
-//  AISD PG WETI PROJECT NR 2
-//  Created by Damian Strojek 184407 on 15/04/2021 
+// AISD PG WETI PROJECT NR 2
+// Damian Strojek s184407 2021 IT/CS
+// @ Copyright 2021, Damian Strojek, All rights reserved.
 #include <iostream>
 #include <iomanip>
 #include <stdlib.h>
