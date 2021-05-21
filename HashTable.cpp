@@ -1,7 +1,12 @@
-// Damian Strojek GUT IT
-// 2021-04-28
-// SOLVED WITHOUT CONCIDERING MULTIPLE OWNERS WITH THE SAME HASH CODE
+// AISD PG WETI LABS NR 5
+// Damian Strojek s184407 2021 IT/CS
+// @ Copyright 2021, Damian Strojek, All rights reserved.
+
+// THE IDEA IS THAT THERE IS 23 MAIN ACCOUNTS AND EVERY MAIN ACCOUNTS CONSISTS OF 10 SUB-ACCOUNTS
+// EVERY SUB-ACCOUNT CONSISTS OF INT_MAXSIZE RECIPIENTS AND OWNER OF SUB-ACCOUNT
+// SO THERE CAN BE MAXIMUM 10 OWNERS OF ACCOUNT WITH THE SAME HASH CODE
 #include <iostream>
+#include <string>
 #include <string.h>
 
 // ONE RECIPIENT CONSISTS OF HIS NAME AND VALUE THAT HE RECEIVED FROM OWNER OF ACCOUNT
@@ -10,67 +15,78 @@ struct recipient {
     int valueReceived = 0;
 };
 
-// MY OWN VECTOR FOR RECIPIENTS OF ACCOUNT
-class Vector {
-    private:
-        recipient *array;
-        int capacity;
-        int length;
-    public:
-        Vector(int = 10);                           // BASIC LENGTH IS 10 BUT IT CAN DOUBLE ITSELF WHEN NEEDED
-        void push_back(recipient newRecipient);     // ADDING NEW RECIPIENTS FOR THIS PARTICULAR OWNER OF ACCOUNT
-        int size() const;
-        recipient get(int index);
-        void changeValue(int index, int value);     // CHANGING VALUE OF ONE OF RECIPIENTS
-        ~Vector();
+struct node {
+    recipient *array;
+    int length = 0;
+    node *next = NULL;
 };
 
-Vector::Vector(int n) : capacity(n), array(new recipient[n]), length(0){
-}
+class List {
+    private:
+        int length;
+        node *head, *tail;
+    public:
+        List();
+        void add(recipient newRecipient);
+        int getLength() const;
+        node *getTail() const;
+        node *getHead() const;
+    friend class HashTable;
+};
 
-void Vector::push_back(recipient newRecipient){
-    // IF THERE IS NO SPACE LEFT YOU DOUBLE CAPACITY
-    if(length == capacity){
-        recipient *old = array;
-        array = new recipient[capacity *= 2];
-        std::copy(old, old+length, array);
-        delete[] old;
+List::List(){
+    length = 0;
+    tail = NULL;
+};
+
+void List::add(recipient newRecipient){
+    node *newNode = new node;
+    newNode->array = new recipient[1000];
+
+    if(length == 0){
+        head = newNode;
+        tail = newNode;
+        length = 1;
     }
-    array[length] = newRecipient;
-    length++;
-}
+    else{
+        tail->next = newNode;
+        tail = newNode;
+        length++;
+    }
+};
 
-int Vector::size() const{
+int List::getLength() const{
     return length;
-}
+};
 
-recipient Vector::get(int index){
-    return array[index];
-}
+node *List::getTail() const{
+    return tail;
+};
 
-void Vector::changeValue(int index, int value){
-    array[index].valueReceived += value;
+node *List::getHead() const{
+    return head;
 }
-
-Vector::~Vector(){
-    delete[] array;
-}
-
 //  ONE ACCOUNT CONSISTS OF OWNER OF THIS ACCOUNT AND RECIPIENTS OF HIS TRANSACTIONS
 struct account {
     std::string ownerOfAccount = "";
-    Vector recipients;
+    List recipients;
+};
+
+// ONE ACCOUNTS CONSISTS OF 10 SMALLER ACCOUNTS AND COUNTER OF HOW MANY ACCOUNTS THERE ALREADY IS
+struct accounts {
+    account *tableOf10Accounts = new account[10];
+    int counterOfAccounts = 0;
 };
 
 class HashTable {
     private:
         // LENGTH OF TABLE OF ACCOUNTS
         int lengthOfTable;
-        // TABLE OF ACCOUNTS
-        account *accounts;
+        // TABLE OF 23 ACCOUNTS AND EVERY ACCOUNT CAN HAVE UP TO 10 OWNERS WITH THE SAME HASH CODE
+        accounts *tableOf23Accounts;
     public:
         HashTable();
-        int hashFunction(std::string nameOfOwner);                                      // SUMING ASCII CHARACTERS AND MODULO THE SUM BY MAX AMOUNT OF ACCOUNTS
+        int hashFunction(std::string nameOfOwner) const;                                      // SUMING ASCII CHARACTERS AND MODULO THE SUM BY MAX AMOUNT OF ACCOUNTS
         void pays(std::string nameOfOwner, std::string nameOfRecipient, int value);     // VOID TO PAY THE RECIPIENT
         int checkBalance(std::string nameOfOwner, std::string nameOfRecipient);         // VOID TO CHECK BALANCE OF ONE PARTICULAR RECIPIENT
         void debug();                                                                   // REALLY NICE DEBUGGING FUNCTION, GO TRY IT OUT
@@ -79,13 +95,13 @@ class HashTable {
 
 HashTable::HashTable(){
     lengthOfTable = 23;                     // ONE OF FIRST PRIME NUMBERS
-    accounts = new account[lengthOfTable];  // ARRAY OF ACCOUNTS
+    tableOf23Accounts = new accounts[lengthOfTable];
 }
 
 // SUMING ASCII CHARACTERS AND MODULO THE SUM BY MAX AMOUNT OF ACCOUNTS
-int HashTable::hashFunction(std::string nameOfOwner){
+int HashTable::hashFunction(std::string nameOfOwner) const{
     int sumOfASCII = 0;
-    for(int i = 0; i < nameOfOwner.length(); i++){
+    for(size_t i = 0; i < nameOfOwner.length(); i++){
         sumOfASCII += nameOfOwner[i];
     }
     return (sumOfASCII % lengthOfTable);
@@ -94,29 +110,65 @@ int HashTable::hashFunction(std::string nameOfOwner){
 void HashTable::pays(std::string nameOfOwner, std::string nameOfRecipient, int value){
     // CALCULATING HASH CODE OF OUR OWNER 
     int index = hashFunction(nameOfOwner);
-    // IF THERE IS NO OWNER OF THIS ACCOUNT YOU CHANGE IT
-    // I DONT EXPECT OWNERS WITH THE SAME HASH CODES, ITS EASY TO FIX
-    if(accounts[index].ownerOfAccount == ""){
-        accounts[index].ownerOfAccount = nameOfOwner;
+    // IF THIS OWNER IS HERE FOR THE FIRST TIME
+    if(tableOf23Accounts[index].counterOfAccounts < 10){
+        bool firstTime = true;
+        for(int i = 0; i < tableOf23Accounts[index].counterOfAccounts; i++){
+            if(!(tableOf23Accounts[index].tableOf10Accounts[i].ownerOfAccount.compare(nameOfOwner))){
+                firstTime = false;
+            }
+        }
+        if(firstTime){
+            tableOf23Accounts[index].tableOf10Accounts[tableOf23Accounts[index].counterOfAccounts].ownerOfAccount = nameOfOwner;
+            tableOf23Accounts[index].counterOfAccounts++;
+        }
     }
     // I CHECK EVERY RECIPIENT OF THIS OWNER FOR THE SAME RECIPIENT THAT JUST GAVE HIM MONEY
-    for(int i = 0; i < accounts[index].recipients.size(); i++){
-        if(!(accounts[index].recipients.get(i).nameOfRecipient.compare(nameOfRecipient))){
-            accounts[index].recipients.changeValue(i, value);
+    for(int i = 0; i < tableOf23Accounts[index].counterOfAccounts; i++){
+        // WE CHECK FOR THIS PARTICULAR OWNER
+        if(!(tableOf23Accounts[index].tableOf10Accounts[i].ownerOfAccount.compare(nameOfOwner))){
+            node *newNode;
+            newNode = tableOf23Accounts[index].tableOf10Accounts[i].recipients.getHead();
+
+            while(newNode != tableOf23Accounts[index].tableOf10Accounts[i].recipients.getTail()){
+                if()
+            }
+            for(int j = 0; j < tableOf23Accounts[index].tableOf10Accounts[i].recipients.getLength(); j++){
+                // WE CHECK FOR THIS PARTICULAR RECEIVER    
+                if(!tableOf23Accounts[index].tableOf10Accounts[i].recipients.getHead())
+                if(!(tableOf23Accounts[index].tableOf10Accounts[i].recipients.get(j).nameOfRecipient.compare(nameOfRecipient))){
+                    tableOf23Accounts[index].tableOf10Accounts[i].recipients.changeValue(j, value);
+                    return;
+                }
+            }
+        }
+    }
+    // IF THERE WAS NO SUCH A RECEIVER BEFORE WE ADD HIM TO THE END OF RECIPIENTS LIST
+    recipient newRecipier{nameOfRecipient, value};
+    for(int i = 0; i < tableOf23Accounts[index].counterOfAccounts; i++){
+        // WE CHECK FOR THIS PARTICULAR OWNER
+        if(!(tableOf23Accounts[index].tableOf10Accounts[i].ownerOfAccount.compare(nameOfOwner))){
+            // WE ADD NEW RECEIVER AT THE END OF THE LIST
+            tableOf23Accounts[index].tableOf10Accounts[i].recipients.push_back(newRecipier);
             return;
         }
     }
-    // IF THERE WAS NO SUCH A RECEIVER BEFORE WE ADD HIM TO THE END OF RECIEPINTS LIST
-    recipient newRecipier{nameOfRecipient, value};
-    accounts[index].recipients.push_back(newRecipier);
 }
 
 int HashTable::checkBalance(std::string nameOfOwner, std::string nameOfRecipient){
     int index = hashFunction(nameOfOwner);
-    for(int i = 0; i < accounts[index].recipients.size(); i++){
-        // CHECKING IF THERE IS RECIPIENT THAT WAS PAID FROM THIS ACCOUNT
-        if(!(accounts[index].recipients.get(i).nameOfRecipient.compare(nameOfRecipient))){
-            return accounts[index].recipients.get(i).valueReceived;
+    // IF THERE IS ANY ACCOUNT UNDER THIS INDEX
+    if(tableOf23Accounts[index].counterOfAccounts > 0){
+        // WE CHECK FOR THIS PARTICULAR OWNER
+        for(int i = 0; i < tableOf23Accounts[index].counterOfAccounts; i++){
+            if(!(tableOf23Accounts[index].tableOf10Accounts[i].ownerOfAccount.compare(nameOfOwner))){
+                // WE CHECK FOR THIS PARTICULAR RECEIVER
+                for(int j = 0; j < tableOf23Accounts[index].tableOf10Accounts[i].recipients.size(); j++){
+                    if(!(tableOf23Accounts[index].tableOf10Accounts[i].recipients.get(j).nameOfRecipient.compare(nameOfRecipient))){
+                        return tableOf23Accounts[index].tableOf10Accounts[i].recipients.get(j).valueReceived;
+                    }
+                }
+            }
         }
     }
     // IF NOT RETURN 0 DOLLARS
@@ -124,18 +176,20 @@ int HashTable::checkBalance(std::string nameOfOwner, std::string nameOfRecipient
 }
 
 void HashTable::debug(){
-    system("cls");
     for(int i = 0; i < lengthOfTable; i++){
-        std::cout << i << " numer konta : ";
-        for(int j = 0; j < accounts[i].recipients.size(); j++){
-            std::cout << " +" << accounts[i].recipients.get(j).valueReceived << " from " << accounts[i].recipients.get(j).nameOfRecipient << ",";
+        std::cout << i << " main account : \n";
+        for(int j = 0; j < tableOf23Accounts[i].counterOfAccounts; j++){
+            std::cout << "          Account of " << tableOf23Accounts[i].tableOf10Accounts[j].ownerOfAccount << ". Recipients : ";
+            for(int k = 0; k < tableOf23Accounts[i].tableOf10Accounts[j].recipients.size(); k++){
+                std::cout << tableOf23Accounts[i].tableOf10Accounts[j].recipients.get(k).nameOfRecipient << " received " << tableOf23Accounts[i].tableOf10Accounts[j].recipients.get(k).valueReceived << ". ";
+            }
+            std::cout << "\n";
         }
-        std::cout << "\n";
     }
 }
 
 HashTable::~HashTable(){
-    delete[] accounts;
+    delete[] tableOf23Accounts;
 }
 
 int main(){
@@ -151,7 +205,7 @@ int main(){
         }
         else if(!nameOfOwner.compare("?")){
             std::cin >> nameOfOwner >> nameOfRecipient;
-            printf("%d\n",myHashTable.checkBalance(nameOfOwner, nameOfRecipient));
+            printf("%d\n", myHashTable.checkBalance(nameOfOwner, nameOfRecipient));
         }
         // JUST FOR FUN, YOU CAN TRY AFTER ADDING SOME ACCOUNTS
         else if(!nameOfOwner.compare("debug")){
