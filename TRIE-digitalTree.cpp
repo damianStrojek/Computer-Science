@@ -1,5 +1,6 @@
-// C++ TRIE Tree
-// Damian Strojek GUT 2021
+// AISD PG WETI LABS NR 6
+// Damian Strojek s184407 2021 IT/CS
+// @ Copyright 2021, Damian Strojek, All rights reserved.
 #include <iostream>
 #define CHAR_SIZE 128
 
