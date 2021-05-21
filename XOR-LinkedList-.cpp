@@ -1,5 +1,6 @@
-//AISD PG WETI PROJECT NR 2
-//AUTHOR : DAMIAN STROJEK 184407
+// AISD PG WETI PROJECT NR 2
+// Damian Strojek s184407 2021 IT/CS
+// @ Copyright 2021, Damian Strojek, All rights reserved.
 #include <iostream>
 #include <stdlib.h>
 #include <stdio.h>
