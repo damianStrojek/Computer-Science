@@ -1,4 +1,4 @@
-// AISD PG WETI PROJECT NR 2
+// AISD PG WETI PROJECT NR 3
 // Damian Strojek s184407 2021 IT/CS
 // @ Copyright 2021, Damian Strojek, All rights reserved.
 #include <iostream>
