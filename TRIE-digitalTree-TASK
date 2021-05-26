@@ -1,4 +1,3 @@
-#TOWRITE
 Implement a TRIE tree which contains translations of words. Word in original language and its translation will not be longer than 16 characters and 
 will contain only lower case lettters.
 The following commands should be supported:
