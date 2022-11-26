@@ -2,12 +2,11 @@
 // Database structures
 // File records: voltage and amperage. Sorted by electric power
 // a two-phase, three-strip sorting algorithm by natural joining was used
-
 #include <iostream>
 #include <time.h>
 #include <fstream>
 #include <string>
-#include <cstdio>
+#include <climits>
 
 #define BUFFOR_SIZE 100
 
@@ -21,9 +20,9 @@ struct DiskInformation {
 } diskInformation;
 
 struct Record {
-	double voltage = 0;
-	double amperage = 0;
-	double electricPower = 0;
+	double voltage;
+	double amperage;
+	double electricPower;
 
 	Record() {};
 
@@ -53,14 +52,13 @@ struct File {
 };
 
 // Class describing read buffor
-class MainBuffer {
-public:
-	Record* buffor;
-	int indexActual;
-	int bufforSize;
-	int counter;
-	bool endOfFile;
-	File* fileToRead;
+struct MainBuffer {
+	Record* buffor;		// Table of records
+	int indexActual;	// Index of next record to read
+	int bufforSize;		// Size of the buffor
+	int counter;		// Index of last record in the buffer
+	bool endOfFile;		// Whether EOL
+	File* fileToRead;	// Information about the file to read
 
 	MainBuffer(File* file) {
 		this->bufforSize = BUFFOR_SIZE;
@@ -98,14 +96,14 @@ public:
 			Record* newRecord;
 
 			std::ifstream input(this->fileToRead->fileName);
-			if (!input.good()) std::cout << "Cannot open the file: " << 
-				this->fileToRead->fileName << "\n"; return NULL;
+			if (!input.good()) { std::cout << "Cannot open the file: " <<
+				this->fileToRead->fileName << "\n"; return NULL; }
 
 			// Move to the place in the file that was read recently
 			input.seekg(this->fileToRead->indexStop, std::ios::beg);
 			this->counter = 0;
 
-			while ((this->counter < this->bufforSize) && !this->endOfFile) {
+			while ((this->counter < this->bufforSize) && (!this->endOfFile)) {
 				if (input >> tempVol >> tempAmp) {
 					// If we are able to read data we need new object
 					newRecord = new Record(tempVol, tempAmp);
@@ -140,13 +138,13 @@ public:
 			Record* newRecord;
 
 			std::ifstream input(this->fileToRead->fileName);
-			if (!input.good()) std::cout << "Cannot open the file: " << 
-				this->fileToRead->fileName << "\n"; return NULL;
+			if (!input.good()) { std::cout << "Cannot open the file: " <<
+				this->fileToRead->fileName << "\n"; return NULL; }
 
 			input.seekg(this->fileToRead->indexStop, std::ios::beg);
 			this->counter = 0;
 
-			while ((this->counter < this->bufforSize) && !this->endOfFile) {
+			while ((this->counter < this->bufforSize) && (!this->endOfFile)) {
 				if (input >> tempVol >> tempAmp >> tempPow) {
 					newRecord = new Record(tempVol, tempAmp, tempPow);
 
@@ -168,10 +166,9 @@ public:
 };
 
 // Class describing write buffor
-class TapeBuffer {
-public:
+struct TapeBuffer {
 	Record* buffor;
-	int indexActual;
+	int indexActual;		// Index of the next element that is going to be written
 	int bufforSize;
 	bool display;			// whether to display file after successive runs
 	File* fileToSave;		// object describing the save file
@@ -181,7 +178,7 @@ public:
 		this->buffor = new Record[BUFFOR_SIZE];
 		this->indexActual = 0;
 		this->fileToSave = file;
-		file->clearFile();
+		this->fileToSave->clearFile();
 		this->display = false;
 	};
 
@@ -241,7 +238,7 @@ public:
 			diskInformation.countWrite++;
 			std::ofstream output(this->fileToSave->fileName, std::ios::out | std::ios::app);
 
-			for (this->indexActual; this->indexActual < this->bufforSize; this->indexActual++) {
+			for (this->indexActual = 0; this->indexActual < this->bufforSize; this->indexActual++) {
 				output << this->buffor[this->indexActual].voltage << " " <<
 					this->buffor[this->indexActual].amperage << std::endl;
 				std::cout << this->indexActual+1 << "U = " << this->buffor[this->indexActual].voltage <<
@@ -259,7 +256,7 @@ public:
 	};
 
 	// Save rest of the records from buffor to the tape
-	void saveRest() {
+	void saveRestValues() {
 		diskInformation.countWrite++;
 		std::ofstream output(this->fileToSave->fileName, std::ios::out | std::ios::app);
 
@@ -299,7 +296,7 @@ void generateRandomRecords(std::string filePath) {
 		tape->saveValues(record);
 	}
 
-	tape->saveRest();
+	tape->saveRestValues();
 	delete tape;
 };
 
@@ -324,7 +321,7 @@ void readRecords(std::string filePath) {
 		counter++;
 	}
 
-	tape->saveRest();
+	tape->saveRestValues();
 	delete tape;
 };
 
@@ -383,11 +380,23 @@ void splitting() {
 
 	Record* record = NULL;
 	double tempValue = 0;
-	TapeBuffer* tapeTemp = tapeOutputB;
+	TapeBuffer* tapeTemp = tapeOutputA;
 
-	while (tapeInput->readRecord() != NULL) {
-		record = tapeInput->readRecord();
+	while (true) {
+		record = tapeInput->nextRecord();
+		if (record == NULL) break;
 
+		if (tempValue > record->electricPower) {
+			if (tapeTemp == tapeOutputA) tapeTemp = tapeOutputB;
+			else tapeTemp = tapeOutputA;
+		}
+		tapeTemp->saveRecord(record);
+		tempValue = record->electricPower;
+	}
+
+	/*
+	record = tapeInput->nextRecord();
+	while (record != NULL) {
 		if (tempValue > record->electricPower) {
 			if (tapeTemp == tapeOutputA) tapeTemp = tapeOutputB;
 			else tapeTemp = tapeOutputA;
@@ -395,7 +404,9 @@ void splitting() {
 
 		tapeTemp->saveRecord(record);
 		tempValue = record->electricPower;
+		record = tapeInput->nextRecord();
 	}
+	*/
 
 	delete tapeInput;
 	delete tapeOutputA;
@@ -415,24 +426,22 @@ bool merging(bool display) {
 	TapeBuffer* tapeOutput = new TapeBuffer(output, display);
 
 	double tempValueA = 0, tempValueB = 0;
-	Record* recordA = tapeInputA->readRecord(),
-		* recordB = tapeInputB->readRecord();
+	Record* recordA = tapeInputA->nextRecord(),
+		* recordB = tapeInputB->nextRecord();
 	// If second tape is clean - records are already sorted and on the first tape
 	if (recordB == NULL) return false;
 
-	// ------------------------------------------------------------------------------
-	// TO DO - REWRITE THIS WHILE BECAUSE IT LOOKS LIKE CRAP WITH WHILE(TRUE)
-	// ------------------------------------------------------------------------------
-	while (true) {
+	// This while is better than while(true), I have no idea how to rewrite it differently
+	while (diskInformation.countWrite < ULLONG_MAX) {
 		// 1. If both tapes are not clean
-		if (recordA != NULL && recordB != NULL) {
+		if ((recordA != NULL) && (recordB != NULL)) {
 			// 1.1. We check if we have reached the end of the series in tape A
 			if (recordA->electricPower < tempValueA) {
 				// If yes then we are writting the rest of the tape B
-				while (recordB != NULL && (recordB->electricPower > tempValueB)) {
+				while ((recordB != NULL) && (recordB->electricPower > tempValueB)) {
 					tapeOutput->saveRecord(recordB);
 					tempValueB = recordB->electricPower;
-					recordB = tapeInputB->readRecord();
+					recordB = tapeInputB->nextRecord();
 				}
 				tempValueA = 0;
 				tempValueB = 0;
@@ -440,10 +449,10 @@ bool merging(bool display) {
 			// 1.2. We check if we have reached the end of the series in tape B
 			else if (recordB->electricPower < tempValueB) {
 				// If yes then we are writting the rest of the tape A
-				while (recordA != NULL && (recordA->electricPower > tempValueA)) {
+				while ((recordA != NULL) && (recordA->electricPower > tempValueA)) {
 					tapeOutput->saveRecord(recordA);
 					tempValueA = recordA->electricPower;
-					recordA = tapeInputA->readRecord();
+					recordA = tapeInputA->nextRecord();
 				}
 				tempValueA = 0;
 				tempValueB = 0;
@@ -453,12 +462,12 @@ bool merging(bool display) {
 				if (recordA->electricPower < recordB->electricPower) {
 					tapeOutput->saveRecord(recordA);
 					tempValueA = recordA->electricPower;
-					recordA = tapeInputA->readRecord();
+					recordA = tapeInputA->nextRecord();
 				}
 				else {
 					tapeOutput->saveRecord(recordB);
 					tempValueB = recordB->electricPower;
-					recordB = tapeInputB->readRecord();
+					recordB = tapeInputB->nextRecord();
 				}
 			}
 		}
@@ -466,7 +475,7 @@ bool merging(bool display) {
 		else if(recordA == NULL) {
 			while (recordB != NULL) {
 				tapeOutput->saveRecord(recordB);
-				recordB = tapeInputB->readRecord();
+				recordB = tapeInputB->nextRecord();
 			}
 			break;
 		}
@@ -474,7 +483,7 @@ bool merging(bool display) {
 		else if (recordB == NULL) {
 			while (recordA != NULL) {
 				tapeOutput->saveRecord(recordA);
-				recordA = tapeInputA->readRecord();
+				recordA = tapeInputA->nextRecord();
 			}
 			break;
 		}
@@ -496,16 +505,16 @@ void rewriteSorted() {
 
 	// Rewrite the file and write it to the output
 	std::cout << "\nFILE AFTER SORTING:\n";
-	while (copy->saveValues(original->readRecord()));
+	while (copy->saveValues(original->nextRecord()));
 	
 	// Rewrite the rest of the records from buffor to the tape
-	copy->saveRest();
+	copy->saveRestValues();
 
 	// Delete objects and additional Tapes
 	delete original;
 	delete copy;
-	remove("a.csv");
-	remove("b.csv");
+	remove("file_a.csv");
+	remove("file_b.csv");
 };
 
 int main() {
