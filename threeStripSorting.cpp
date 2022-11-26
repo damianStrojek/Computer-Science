@@ -52,7 +52,8 @@ struct File {
 };
 
 // Class describing read buffor
-struct MainBuffer {
+class MainBuffer {
+public:
 	Record* buffor;		// Table of records
 	int indexActual;	// Index of next record to read
 	int bufforSize;		// Size of the buffor
@@ -166,7 +167,8 @@ struct MainBuffer {
 };
 
 // Class describing write buffor
-struct TapeBuffer {
+class TapeBuffer {
+public:
 	Record* buffor;
 	int indexActual;		// Index of the next element that is going to be written
 	int bufforSize;
