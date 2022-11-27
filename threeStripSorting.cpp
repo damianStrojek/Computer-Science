@@ -8,7 +8,7 @@
 #include <string>
 #include <climits>
 
-#define BUFFOR_SIZE 100
+#define BUFFER_SIZE 100
 
 // Had to define it globally because I was not able
 // to modify it in destructor
@@ -51,44 +51,44 @@ struct File {
 	void clearFile() { remove(this->fileName.c_str()); };
 };
 
-// Class describing read buffor
+// Class describing read buffer
 class MainBuffer {
 public:
-	Record* buffor;		// Table of records
+	Record* buffer;		// Table of records
 	int indexActual;	// Index of next record to read
-	int bufforSize;		// Size of the buffor
+	int bufferSize;		// Size of the buffer
 	int counter;		// Index of last record in the buffer
 	bool endOfFile;		// Whether EOL
 	File* fileToRead;	// Information about the file to read
 
 	MainBuffer(File* file) {
-		this->bufforSize = BUFFOR_SIZE;
-		this->buffor = new Record[BUFFOR_SIZE];
-		this->indexActual = BUFFOR_SIZE;
+		this->bufferSize = BUFFER_SIZE;
+		this->buffer = new Record[BUFFER_SIZE];
+		this->indexActual = BUFFER_SIZE;
 		this->endOfFile = false;
 		this->counter = 0;
 		this->fileToRead = file;
 	};
 
-	void clearBuffor() { 
+	void clearBuffor() {
 		/*
-		for (int i = 0; i < this->bufforSize; i++) {
-			this->buffor[i].amperage = -1;
-			this->buffor[i].voltage = -1;
-			this->buffor[i].electricPower = -1;
+		for (int i = 0; i < this->bufferSize; i++) {
+			this->buffer[i].amperage = -1;
+			this->buffer[i].voltage = -1;
+			this->buffer[i].electricPower = -1;
 		}
 		*/
 
 		/*
-		for(int i = 0; i < this->bufforSize; i++) { delete &(this->buffor[i]); }
+		for(int i = 0; i < this->bufferSize; i++) { delete &(this->buffer[i]); }
 		*/
 	};
 
-	// Download record from the buffor - only when copying files
+	// Download record from the buffer - only when copying files
 	Record* readRecord() {
-		// If buffor is empty - default settings
-		if (this->indexActual == this->bufforSize) {
-			// Increase number of readings and clear buffor
+		// If buffer is empty - default settings
+		if (this->indexActual == this->bufferSize) {
+			// Increase number of readings and clear buffer
 			diskInformation.countRead++;
 			this->clearBuffor();
 
@@ -97,20 +97,22 @@ public:
 			Record* newRecord;
 
 			std::ifstream input(this->fileToRead->fileName);
-			if (!input.good()) { std::cout << "Cannot open the file: " <<
-				this->fileToRead->fileName << "\n"; return NULL; }
+			if (!input.good()) {
+				std::cout << "Cannot open the file: " <<
+					this->fileToRead->fileName << "\n"; return NULL;
+			}
 
 			// Move to the place in the file that was read recently
 			input.seekg(this->fileToRead->indexStop, std::ios::beg);
 			this->counter = 0;
 
-			while ((this->counter < this->bufforSize) && (!this->endOfFile)) {
+			while ((this->counter < this->bufferSize) && (!this->endOfFile)) {
 				if (input >> tempVol >> tempAmp) {
 					// If we are able to read data we need new object
 					newRecord = new Record(tempVol, tempAmp);
 
 					// Saving data to bufor and writing file to output
-					this->buffor[this->counter] = *newRecord;
+					this->buffer[this->counter] = *newRecord;
 					std::cout << "U = " << tempVol << "V I = " << tempAmp << "A\n";
 					this->counter++;
 				}
@@ -126,12 +128,12 @@ public:
 		// If I've printed the entire buffer and we've reached the EOF, we're done
 		if ((this->indexActual >= this->counter) && this->endOfFile) return NULL;
 		this->indexActual++;
-		return &(this->buffor[this->indexActual-1]);
+		return &(this->buffer[this->indexActual - 1]);
 	};
 
-	// Download record from the buffor - only when sorting (power is already calculated)
+	// Download record from the buffer - only when sorting (power is already calculated)
 	Record* nextRecord() {
-		if (this->indexActual == this->bufforSize) {
+		if (this->indexActual == this->bufferSize) {
 			diskInformation.countRead++;
 			this->clearBuffor();
 
@@ -139,17 +141,19 @@ public:
 			Record* newRecord;
 
 			std::ifstream input(this->fileToRead->fileName);
-			if (!input.good()) { std::cout << "Cannot open the file: " <<
-				this->fileToRead->fileName << "\n"; return NULL; }
+			if (!input.good()) {
+				std::cout << "Cannot open the file: " <<
+					this->fileToRead->fileName << "\n"; return NULL;
+			}
 
 			input.seekg(this->fileToRead->indexStop, std::ios::beg);
 			this->counter = 0;
 
-			while ((this->counter < this->bufforSize) && (!this->endOfFile)) {
+			while ((this->counter < this->bufferSize) && (!this->endOfFile)) {
 				if (input >> tempVol >> tempAmp >> tempPow) {
 					newRecord = new Record(tempVol, tempAmp, tempPow);
 
-					this->buffor[this->counter] = *newRecord;
+					this->buffer[this->counter] = *newRecord;
 					this->counter++;
 				}
 				else this->endOfFile = true;
@@ -162,22 +166,22 @@ public:
 
 		if ((this->indexActual >= this->counter) && this->endOfFile) return NULL;
 		this->indexActual++;
-		return &(this->buffor[this->indexActual-1]);
+		return &(this->buffer[this->indexActual - 1]);
 	};
 };
 
-// Class describing write buffor
+// Class describing write buffer
 class TapeBuffer {
 public:
-	Record* buffor;
+	Record* buffer;
 	int indexActual;		// Index of the next element that is going to be written
-	int bufforSize;
+	int bufferSize;
 	bool display;			// whether to display file after successive runs
 	File* fileToSave;		// object describing the save file
 
 	TapeBuffer(File* file) {
-		this->bufforSize = BUFFOR_SIZE;
-		this->buffor = new Record[BUFFOR_SIZE];
+		this->bufferSize = BUFFER_SIZE;
+		this->buffer = new Record[BUFFER_SIZE];
 		this->indexActual = 0;
 		this->fileToSave = file;
 		this->fileToSave->clearFile();
@@ -185,8 +189,8 @@ public:
 	};
 
 	TapeBuffer(File* file, bool disp) {
-		this->bufforSize = BUFFOR_SIZE;
-		this->buffor = new Record[BUFFOR_SIZE];
+		this->bufferSize = BUFFER_SIZE;
+		this->buffer = new Record[BUFFER_SIZE];
 		this->indexActual = 0;
 		this->fileToSave = file;
 		this->fileToSave->clearFile();
@@ -198,10 +202,10 @@ public:
 		std::ofstream output(this->fileToSave->fileName, std::ios::out | std::ios::app);
 
 		for (int i = 0; i < this->indexActual; i++) {
-			output << this->buffor[i].voltage << " " << this->buffor[i].amperage <<
-				" " << this->buffor[i].electricPower << std::endl;
-			if(this->display) std::cout << "U = " << this->buffor[i].voltage << 
-				"V I = " << this->buffor[i].amperage << "A P = " << this->buffor[i].electricPower << "W\n";
+			output << this->buffer[i].voltage << " " << this->buffer[i].amperage <<
+				" " << this->buffer[i].electricPower << std::endl;
+			if (this->display) std::cout << "U = " << this->buffer[i].voltage <<
+				"V I = " << this->buffer[i].amperage << "A P = " << this->buffer[i].electricPower << "W\n";
 		}
 
 		output.close();
@@ -209,19 +213,19 @@ public:
 
 	// Save record on the tape (in file) - while sorting
 	bool saveRecord(Record* record) {
-		if (this->indexActual == this->bufforSize) {
+		if (this->indexActual == this->bufferSize) {
 			diskInformation.countWrite++;
 			std::ofstream output(this->fileToSave->fileName, std::ios::out | std::ios::app);
 
 			if (this->display) std::cout << "\nFILE AFTER ANOTHER RUN:\n";
 
-			for (this->indexActual = 0; this->indexActual < this->bufforSize; this->indexActual++) {
-				output << this->buffor[this->indexActual].voltage << " " <<
-					this->buffor[this->indexActual].amperage << " " <<
-					this->buffor[this->indexActual].electricPower << std::endl;
-				if (this->display) std::cout << "U = " << this->buffor[this->indexActual].voltage << "V I = " <<
-					this->buffor[this->indexActual].amperage << "A P = " <<
-					this->buffor[this->indexActual].electricPower << "W\n";
+			for (this->indexActual = 0; this->indexActual < this->bufferSize; this->indexActual++) {
+				output << this->buffer[this->indexActual].voltage << " " <<
+					this->buffer[this->indexActual].amperage << " " <<
+					this->buffer[this->indexActual].electricPower << std::endl;
+				if (this->display) std::cout << "U = " << this->buffer[this->indexActual].voltage << "V I = " <<
+					this->buffer[this->indexActual].amperage << "A P = " <<
+					this->buffer[this->indexActual].electricPower << "W\n";
 			}
 
 			output.close();
@@ -229,22 +233,22 @@ public:
 		}
 
 		if (record == NULL) return false;
-		this->buffor[this->indexActual] = *record;
+		this->buffer[this->indexActual] = *record;
 		this->indexActual++;
 		return true;
 	};
 
 	// Save record on the tape (in file) - while rewriting sorted file
 	bool saveValues(Record* record) {
-		if (this->indexActual == this->bufforSize) {
+		if (this->indexActual == this->bufferSize) {
 			diskInformation.countWrite++;
 			std::ofstream output(this->fileToSave->fileName, std::ios::out | std::ios::app);
 
-			for (this->indexActual = 0; this->indexActual < this->bufforSize; this->indexActual++) {
-				output << this->buffor[this->indexActual].voltage << " " <<
-					this->buffor[this->indexActual].amperage << std::endl;
-				std::cout << this->indexActual+1 << "U = " << this->buffor[this->indexActual].voltage <<
-					"V I = " << this->buffor[this->indexActual].amperage << "A\n";
+			for (this->indexActual = 0; this->indexActual < this->bufferSize; this->indexActual++) {
+				output << this->buffer[this->indexActual].voltage << " " <<
+					this->buffer[this->indexActual].amperage << std::endl;
+				std::cout << this->indexActual + 1 << "U = " << this->buffer[this->indexActual].voltage <<
+					"V I = " << this->buffer[this->indexActual].amperage << "A\n";
 			}
 
 			output.close();
@@ -252,21 +256,21 @@ public:
 		}
 
 		if (record == NULL) return false;
-		this->buffor[this->indexActual] = *record;
+		this->buffer[this->indexActual] = *record;
 		this->indexActual++;
 		return true;
 	};
 
-	// Save rest of the records from buffor to the tape
+	// Save rest of the records from buffer to the tape
 	void saveRestValues() {
 		diskInformation.countWrite++;
 		std::ofstream output(this->fileToSave->fileName, std::ios::out | std::ios::app);
 
 		for (int i = 0; i < this->indexActual; i++) {
-			output << this->buffor[i].voltage << " " <<
-				this->buffor[i].amperage << std::endl;
-			std::cout << i+1 << ". U = " << this->buffor[i].voltage <<
-				"V I = " << this->buffor[i].amperage << "A\n";
+			output << this->buffer[i].voltage << " " <<
+				this->buffer[i].amperage << std::endl;
+			std::cout << i + 1 << ". U = " << this->buffer[i].voltage <<
+				"V I = " << this->buffer[i].amperage << "A\n";
 		}
 
 		output.close();
@@ -474,7 +478,7 @@ bool merging(bool display) {
 			}
 		}
 		// 2. If records from tape A are already written to the output
-		else if(recordA == NULL) {
+		else if (recordA == NULL) {
 			while (recordB != NULL) {
 				tapeOutput->saveRecord(recordB);
 				recordB = tapeInputB->nextRecord();
@@ -508,8 +512,8 @@ void rewriteSorted() {
 	// Rewrite the file and write it to the output
 	std::cout << "\nFILE AFTER SORTING:\n";
 	while (copy->saveValues(original->nextRecord()));
-	
-	// Rewrite the rest of the records from buffor to the tape
+
+	// Rewrite the rest of the records from buffer to the tape
 	copy->saveRestValues();
 
 	// Delete objects and additional Tapes
