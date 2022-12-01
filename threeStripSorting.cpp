@@ -247,7 +247,7 @@ public:
 			for (this->indexActual = 0; this->indexActual < this->bufferSize; this->indexActual++) {
 				output << this->buffer[this->indexActual].voltage << " " <<
 					this->buffer[this->indexActual].amperage << std::endl;
-				std::cout << this->indexActual + 1 << "U = " << this->buffer[this->indexActual].voltage <<
+				std::cout << (this->indexActual + 1) << " U = " << this->buffer[this->indexActual].voltage <<
 					"V I = " << this->buffer[this->indexActual].amperage << "A\n";
 			}
 
@@ -278,6 +278,7 @@ public:
 	};
 };
 
+// When generating records |randomly|
 void generateRandomRecords(std::string filePath) {
 	double voltage, amperage, generate;
 	int numberOfRecords;
@@ -288,7 +289,7 @@ void generateRandomRecords(std::string filePath) {
 
 	srand(time(NULL));
 
-	std::cout << "\nInsert number of records to generate: ";
+	std::cout << "\n\tInsert number of records to generate: ";
 	std::cin >> numberOfRecords;
 	while (numberOfRecords--) {
 		// Random integer part and fractional part for Voltage
@@ -306,6 +307,7 @@ void generateRandomRecords(std::string filePath) {
 	delete tape;
 };
 
+// When inputting records by hand
 void readRecords(std::string filePath) {
 	double voltage, amperage;
 	int numberOfRecords, counter = 1;
@@ -314,13 +316,13 @@ void readRecords(std::string filePath) {
 	TapeBuffer* tape = new TapeBuffer(output);
 	Record* record = NULL;
 
-	std::cout << "\nInsert number of records you want to input: ";
+	std::cout << "\n\tInsert number of records you want to input: ";
 	std::cin >> numberOfRecords;
 
 	while (numberOfRecords--) {
-		std::cout << "\n" << counter << "\nInsert voltage: ";
+		std::cout << "\n\t" << counter << "\n\tInsert voltage: ";
 		std::cin >> voltage;
-		std::cout << "\nInsert amperage: ";
+		std::cout << "\n\tInsert amperage: ";
 		std::cin >> amperage;
 		record = new Record(voltage, amperage);
 		tape->saveValues(record);
@@ -331,17 +333,20 @@ void readRecords(std::string filePath) {
 	delete tape;
 };
 
+// When loading records from file
 void readFilePath(std::string& filePath) {
 	std::string tempFilePath;
-	std::cout << "\nInsert new filepath: ";
+	std::cout << "\n\tInsert new filepath: ";
 	// First we need to get rid of the newline char
 	std::getline(std::cin, tempFilePath);
 	std::getline(std::cin, tempFilePath);
 };
 
+// Main menu with the choice of generating random records, inputting them, or loading them from file
 void menu(std::string filePath) {
-	std::cout << "Choose how to create a file with records:\n1. Random generator" <<
-		"\n2. Insert all records\n3. Read records from file\nYour choice : ";
+	std::cout << "Damian Strojek s184407 2022\n\n\tChoose how to create a file with records:" <<
+		"\n\t\t1.Random generator \n\t\t2.Insert all records\n\t\t3.Read records from file\n\n\tYour choice : ";
+
 	int choice;
 	std::cin >> choice;
 	switch (choice) {
@@ -502,6 +507,7 @@ bool merging(bool display) {
 	return true;
 };
 
+// Rewriting sorted tape to the output file
 void rewriteSorted() {
 	File* input = new File("file_a.csv", 0);
 	File* output = new File("sorted.csv", 0);
@@ -529,7 +535,7 @@ int main() {
 
 	menu(filePath);
 	rewriteFile(filePath, "file_c.csv");
-	std::cout << "Do you want to see a file after each phase of sorting (0 - No, 1 - Yes)? ";
+	std::cout << "\n\tDo you want to see a file after each phase of sorting (0 - No, 1 - Yes)? ";
 	std::cin >> display;
 
 	// Next runs of sorting
@@ -539,9 +545,9 @@ int main() {
 	}
 	rewriteSorted();
 
-	std::cout << "\nSTATISTICS:\nPhases of splitting: " << diskInformation.countSplitting <<
-		"\nPhases of merging: " << diskInformation.countMerge << "\nNumber of reads from the disk: " <<
-		diskInformation.countRead << "\nNumber of writes to the disk: " << diskInformation.countWrite << "\n\n";
+	std::cout << "\n\t\tSTATISTICS:\n\n\t\tPhases of splitting: " << diskInformation.countSplitting <<
+		"\n\t\tPhases of merging: " << diskInformation.countMerge << "\n\t\tNumber of reads from the disk: " <<
+		diskInformation.countRead << "\n\t\tNumber of writes to the disk: " << diskInformation.countWrite << "\n\n";
 
 	return 0;
 };
