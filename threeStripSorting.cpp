@@ -278,6 +278,38 @@ public:
 	};
 };
 
+void generateRandomRecords(std::string filePath);
+void readRecords(std::string filePath);
+void readFilePath(std::string& filePath);
+void menu(std::string filePath);
+void rewriteFile(std::string sourceFile, std::string destinationFile);
+void splitting();
+bool merging(bool display);
+void rewriteSorted();
+
+int main() {
+	std::string filePath = "input.csv";
+	bool sorted = true, display;
+
+	menu(filePath);
+	rewriteFile(filePath, "file_c.csv");
+	std::cout << "\n\tDo you want to see a file after each phase of sorting (0 - No, 1 - Yes)? ";
+	std::cin >> display;
+
+	// Next runs of sorting
+	while (sorted) {
+		splitting();
+		sorted = merging(display);
+	}
+	rewriteSorted();
+
+	std::cout << "\n\t\tSTATISTICS:\n\n\t\tPhases of splitting: " << diskInformation.countSplitting <<
+		"\n\t\tPhases of merging: " << diskInformation.countMerge << "\n\t\tNumber of reads from the disk: " <<
+		diskInformation.countRead << "\n\t\tNumber of writes to the disk: " << diskInformation.countWrite << "\n\n";
+
+	return 0;
+};
+
 // When generating records |randomly|
 void generateRandomRecords(std::string filePath) {
 	double voltage, amperage, generate;
@@ -527,27 +559,4 @@ void rewriteSorted() {
 	delete copy;
 	remove("file_a.csv");
 	remove("file_b.csv");
-};
-
-int main() {
-	std::string filePath = "input.csv";
-	bool sorted = true, display;
-
-	menu(filePath);
-	rewriteFile(filePath, "file_c.csv");
-	std::cout << "\n\tDo you want to see a file after each phase of sorting (0 - No, 1 - Yes)? ";
-	std::cin >> display;
-
-	// Next runs of sorting
-	while (sorted) {
-		splitting();
-		sorted = merging(display);
-	}
-	rewriteSorted();
-
-	std::cout << "\n\t\tSTATISTICS:\n\n\t\tPhases of splitting: " << diskInformation.countSplitting <<
-		"\n\t\tPhases of merging: " << diskInformation.countMerge << "\n\t\tNumber of reads from the disk: " <<
-		diskInformation.countRead << "\n\t\tNumber of writes to the disk: " << diskInformation.countWrite << "\n\n";
-
-	return 0;
 };
