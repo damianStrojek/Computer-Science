@@ -7,18 +7,21 @@
 #include <fstream>
 #include <string>
 
-#define DATAFILE "data"
-#define TEMPDATAFILE "data2"
-#define INDEXFILE "indexes"
+#define DATAFILE "data_file"
+#define TEMPDATAFILE "data_temp_file"
+#define INDEXFILE "index_file"
 #define PAGESIZE 10
 #define ALFA 0.5
 #define RECORDSIZE sizeof(Record)
 #define INDEXSIZE sizeof(Index)
 
-int recordsInPrimary = 0;           // Number of records in primary area
-int recordsInOverflow = 0;          // Number of records in overflow area
-int maxPrimary = 10;                // Maximum number of records in primary area
-int maxOverflow = maxPrimary / 5;   // Maximum number of records in overflow area
+// One structure is better than global variables
+struct GlobalInformation {
+    int recordsInPrimary = 0;           // Number of records in primary area
+    int recordsInOverflow = 0;          // Number of records in overflow area
+    int maxPrimary = 10;                // Maximum number of records in primary area
+    int maxOverflow = maxPrimary / 5;   // Maximum number of records in overflow area
+} globalInf;
 
 // Description of a single index
 struct Index {
@@ -61,7 +64,7 @@ int main() {
     double voltage, amperage;
     std::string command;
 
-    std::cout << "\tDAMIAN STROJEK S184407\n\tINDEX-SEQUENTIAL FILE ORGANISATION\n";
+    std::cout << "\n\tDAMIAN STROJEK S184407\n\tINDEX-SEQUENTIAL FILE ORGANISATION\n";
     std::cout << "\n\tChoose data source:\n\t\t1 - Keyboard\n\t\t2 - File\n\n\tChoice: ";
     std::cin >> choice;
 
@@ -123,7 +126,7 @@ int main() {
         inputFile.open(command);
         if (!inputFile.is_open()) {
             std::cout << "\n\t!!! Couldn't open file " << command << ".\n";
-            return;
+            return 0;
         }
 
         while (!escape) {
@@ -187,7 +190,7 @@ void initialize() {
     int read = 0, write = 0;
 
     // Creating datafile and writting empty records to it
-    int i = (int)ceil(((double)(maxPrimary + maxOverflow)) / (double)PAGESIZE);
+    int i = (int)ceil(((double)(globalInf.maxPrimary + globalInf.maxOverflow)) / (double)PAGESIZE);
     while (i--) {
         fwrite(buffer, RECORDSIZE, PAGESIZE, file);
         write++;
@@ -197,30 +200,30 @@ void initialize() {
     fclose(file);
     createIndex(read, write);
 
-    std::cout << "\nSetting up initial values:\nReads = " <<
+    std::cout << "\n\tSetting up initial values:\n\tReads = " <<
         read << ". Writes = " << write << "\n";
 
     // Changing first record so it has the lowest possible key
-    addNewRecord(0.5, 1.0, read, write);
+    addNewRecord(1.0, 1.0, read, write);
 };
 
 // Adding new record
 void addNewRecord(double voltage, double amperage, int& read, int& write) {
     // If overflow is full we need to reorganize
-    if (recordsInOverflow == maxOverflow) reorganize(read, write);
+    if (globalInf.recordsInOverflow == globalInf.maxOverflow) reorganize(read, write);
 
-    int key = (int)(voltage / amperage);
+    int key = (int)(voltage * amperage);
     if (key < 0) {
-        std::cout << "You can't input a record with key less than 1.\n";
+        std::cout << "\n\tYou can't input a record with key less than 1.\n";
         return;
     }
-    else if (!key) {
-        std::cout << "Record with inputted key doesn't exist.\n";
+    else if (key == 0) {
+        std::cout << "\n\tRecord with inputted key doesn't exist.\n";
         return;
     }
 
     int pointer, i = 0, j, page;
-    double temp, changeIndex = 0;
+    double changeIndex = 0;
 
     Record* buffer = new Record[PAGESIZE];          // Buffer for data file
     FILE* fileRead = fopen(DATAFILE, "rb");         // Data file
@@ -260,7 +263,7 @@ void addNewRecord(double voltage, double amperage, int& read, int& write) {
                 buffer[i].voltage = voltage;
                 buffer[i].amperage = amperage;
                 buffer[i].pointer = -1;
-                recordsInPrimary++;
+                globalInf.recordsInPrimary++;
 
                 sort(buffer, i);
                 // Save page that was changed
@@ -274,7 +277,7 @@ void addNewRecord(double voltage, double amperage, int& read, int& write) {
                     write++;
                 }
                 // Rewrite overflow
-                i = (int)ceil((double)maxOverflow / (double)PAGESIZE);
+                i = (int)ceil((double)globalInf.maxOverflow / (double)PAGESIZE);
                 for (int j = 0; j < i; j++) {
                     fread(buffer, RECORDSIZE, PAGESIZE, fileRead);
                     read++;
@@ -325,12 +328,12 @@ void addNewRecord(double voltage, double amperage, int& read, int& write) {
         }
         // Rewrite overflow
         delete[] buffer;
-        buffer = new Record[maxOverflow];
-        fread(buffer, RECORDSIZE, maxOverflow, fileRead);
+        buffer = new Record[globalInf.maxOverflow];
+        fread(buffer, RECORDSIZE, globalInf.maxOverflow, fileRead);
         read++;
 
         // Adding file to the end of overflow while changing pointers of all records
-        for (j = 0; j < maxOverflow; j++) {
+        for (j = 0; j < globalInf.maxOverflow; j++) {
             // Adding to the free space in overflow
             if (buffer[j].key == -1) {
                 buffer[j].key = key;
@@ -365,8 +368,8 @@ void addNewRecord(double voltage, double amperage, int& read, int& write) {
             }
         }
 
-        recordsInOverflow++;
-        fwrite(buffer, RECORDSIZE, maxOverflow, fileWrite);
+        globalInf.recordsInOverflow++;
+        fwrite(buffer, RECORDSIZE, globalInf.maxOverflow, fileWrite);
         write++;
         delete[] buffer;
         fclose(fileRead);
@@ -399,7 +402,7 @@ void sort(Record buffer[], int sizeToSort) {
 int searchIndex(int key, int& read) {
     Index* buffer = new Index[PAGESIZE]; // Buffer of index file
     FILE* file = fopen(INDEXFILE, "rb"); // Index file
-    int i = maxPrimary / PAGESIZE, j, k, l, page = -1;
+    int i = globalInf.maxPrimary / PAGESIZE, k, l, page = -1;
 
     // We are loading indexes by pages and looking for specific index
     while (i--) {
@@ -427,7 +430,7 @@ int searchIndex(int key, int& read) {
 
 // Creating Index based upon records in primary area
 void createIndex(int& read, int& write) {
-    int i = maxPrimary / PAGESIZE, j, k;        // Number of records
+    int i = globalInf.maxPrimary / PAGESIZE, j, k;        // Number of records
     Record* bufferOne = new Record[PAGESIZE];   // Buffer of data file
     Index* bufferTwo = new Index[PAGESIZE];     // Buffer of index file
     FILE* fileOne = fopen(DATAFILE, "rb");      // File with data
@@ -459,7 +462,7 @@ void showIndex() {
     int read = 0, k, l;
     Index* buffer = new Index[PAGESIZE];    // Buffer of index file
     FILE* file = fopen(INDEXFILE, "rb");    // Index file
-    std::cout << "\nSHOW INDEX FILE\n";
+    std::cout << "\n\tSHOW INDEX FILE\n\n";
 
     // ----------------------------------------------------
     // TO-DO: Maybe different order in this while
@@ -475,23 +478,23 @@ void showIndex() {
 
     fclose(file);
     delete[] buffer;
-    std::cout << "Reads = " << read << "\n";
+    std::cout << "\n\tReads = " << read << "\n";
 };
 
 // Show file
 void showFile() {
-    int read = 0, i = maxPrimary / PAGESIZE, l = 0, pointer;
+    int read = 0, i = globalInf.maxPrimary / PAGESIZE, l = 0, pointer;
     Record* primaryBuffer = new Record[PAGESIZE];       // Page buffer of primary area
-    Record* overflowBuffer = new Record[maxOverflow];   // Page buffer of overflow area
+    Record* overflowBuffer = new Record[globalInf.maxOverflow];   // Page buffer of overflow area
     FILE* file = fopen(DATAFILE, "rb");                 // Data file
 
     // Load overflow to buffer
-    fseek(file, maxPrimary * RECORDSIZE, SEEK_SET);
-    fread(overflowBuffer, RECORDSIZE, maxOverflow, file);
+    fseek(file, globalInf.maxPrimary * RECORDSIZE, SEEK_SET);
+    fread(overflowBuffer, RECORDSIZE, globalInf.maxOverflow, file);
     read++;
 
     fseek(file, 0, SEEK_SET);   // Go to the beggining of file
-    std::cout << "\nSHOW FILE\n";
+    std::cout << "\n\tSHOW FILE\n\n";
 
     for (int j = 0; j < i; j++) {
         // Load page from primary area
@@ -504,7 +507,7 @@ void showFile() {
             pointer = primaryBuffer[k].pointer;
             // If pointer is pointing to record in overflow 
             // we need to read records from overflow
-            while (l < maxOverflow && overflowBuffer[l].key != -1) {
+            while (l < globalInf.maxOverflow && overflowBuffer[l].key != -1) {
                 if (overflowBuffer[l].key == pointer) {
                     std::cout << overflowBuffer[k].key << " " << overflowBuffer[k].voltage <<
                         " " << overflowBuffer[k].amperage << "\n";
@@ -518,21 +521,21 @@ void showFile() {
     fclose(file);
     delete[] primaryBuffer;
     delete[] overflowBuffer;
-    std::cout << "Read = " << read << "\n";
+    std::cout << "\n\tRead = " << read << "\n";
 };
 
 // Reorganize both areas -> primary = primary + overflow, overflow = 0
 void reorganize(int& read, int& write) {
-    int counter = 0, i = maxPrimary / PAGESIZE, l = 0, pointer, pages = 0;
+    int counter = 0, i = globalInf.maxPrimary / PAGESIZE, l = 0, pointer, pages = 0;
     Record* primaryBuffer = new Record[PAGESIZE];       // Buffer of pages from primary area
-    Record* overflowBuffer = new Record[maxOverflow];   // Buffer of pages from overflow area
+    Record* overflowBuffer = new Record[globalInf.maxOverflow];   // Buffer of pages from overflow area
     Record* saveBuffer = new Record[PAGESIZE];          // Buffer to save to
     FILE* fileRead = fopen(DATAFILE, "rb");             // Data file to read from
     FILE* fileWrite = fopen(TEMPDATAFILE, "wb");        // Save file to save to - will need renaming
 
     // Loading up overflow
-    fseek(fileRead, maxPrimary * RECORDSIZE, SEEK_SET);
-    fread(overflowBuffer, RECORDSIZE, maxOverflow, fileRead);
+    fseek(fileRead, globalInf.maxPrimary * RECORDSIZE, SEEK_SET);
+    fread(overflowBuffer, RECORDSIZE, globalInf.maxOverflow, fileRead);
     read++;
     fseek(fileRead, 0, SEEK_SET);
 
@@ -554,7 +557,7 @@ void reorganize(int& read, int& write) {
             pointer = primaryBuffer[k].pointer;
 
             // If record from primary area is pointing on the page from overflow
-            while (pointer != -1 && l < maxOverflow) {
+            while (pointer != -1 && l < globalInf.maxOverflow) {
                 // If the save buffer is "alpha filled", we write it to the file
                 if (counter == PAGESIZE * ALFA) {
                     for (int m = 0; m < counter; m++) saveBuffer[m].pointer = -1;
@@ -588,10 +591,10 @@ void reorganize(int& read, int& write) {
     remove(DATAFILE);
     rename(TEMPDATAFILE, DATAFILE);
     // Changing number of records in each area
-    maxPrimary = pages * PAGESIZE;
-    maxOverflow = maxPrimary / 2;
-    recordsInPrimary += recordsInOverflow;
-    recordsInOverflow = 0;
+    globalInf.maxPrimary = pages * PAGESIZE;
+    globalInf.maxOverflow = globalInf.maxPrimary / 2;
+    globalInf.recordsInPrimary += globalInf.recordsInOverflow;
+    globalInf.recordsInOverflow = 0;
     // Creating new index on the basis of changed values
     createIndex(read, write);
 };
@@ -623,7 +626,7 @@ void readRecord(int key) {
     // Looking for that key in overflow area
     else {
         // Jumping through primary area to overflow area
-        fseek(file, maxPrimary * RECORDSIZE, SEEK_SET);
+        fseek(file, globalInf.maxPrimary * RECORDSIZE, SEEK_SET);
         // Loading up pages from overflow area
         while (fread(buffer, RECORDSIZE, PAGESIZE, file) > 0) {
             read++;
@@ -663,8 +666,8 @@ bool deleteRecord(int key, int& read, int& write) {
     FILE* fileWrite = fopen(TEMPDATAFILE, "wb");    // Data file to write to
 
     // Loading up overflow
-    fseek(fileRead, maxPrimary * RECORDSIZE, SEEK_SET);
-    fread(overflowBuffer, RECORDSIZE, maxOverflow, fileRead);
+    fseek(fileRead, globalInf.maxPrimary * RECORDSIZE, SEEK_SET);
+    fread(overflowBuffer, RECORDSIZE, globalInf.maxOverflow, fileRead);
     read++;
     fseek(fileRead, 0, SEEK_SET);
 
@@ -693,11 +696,11 @@ bool deleteRecord(int key, int& read, int& write) {
                 primaryBuffer[i].key = primaryBuffer[i].pointer = -1;
                 primaryBuffer[i].voltage = primaryBuffer[i].amperage = 0;
                 deleted = true;
-                recordsInPrimary--;
+                globalInf.recordsInPrimary--;
             }
             // If record from primary is pointing to record in overflow
             else {
-                for (int j = 0; j < maxOverflow; j++) {
+                for (int j = 0; j < globalInf.maxOverflow; j++) {
                     // If we found the record
                     if (overflowBuffer[j].key == pointer) {
                         // Moving record from overflow to primary
@@ -706,12 +709,12 @@ bool deleteRecord(int key, int& read, int& write) {
                         // Sorting primary page
                         sort(primaryBuffer, i);
                         // Rewriting records from overflow by one up
-                        for (; j < maxOverflow - 1; j++) overflowBuffer[j] = overflowBuffer[j + 1];
+                        for (; j < globalInf.maxOverflow - 1; j++) overflowBuffer[j] = overflowBuffer[j + 1];
                         // Last record from overflow is now free
                         overflowBuffer[j].key = overflowBuffer[j].pointer = -1;
                         overflowBuffer[j].voltage = overflowBuffer[j].amperage = 0;
                         deleted = true;
-                        recordsInOverflow--;
+                        globalInf.recordsInOverflow--;
                         break;
                     }
                 }
@@ -723,15 +726,15 @@ bool deleteRecord(int key, int& read, int& write) {
             if (pointer != -1) {
                 // Looking for this record in overflow area
                 int j = 0;
-                while (j < maxOverflow && pointer != -1) {
+                while (j < globalInf.maxOverflow && pointer != -1) {
                     if (overflowBuffer[j].key == key) {
                         primaryBuffer[i - 1].pointer = overflowBuffer[j].pointer;
-                        for (; j < maxOverflow - 1; j++) overflowBuffer[j] = overflowBuffer[j + 1];
+                        for (; j < globalInf.maxOverflow - 1; j++) overflowBuffer[j] = overflowBuffer[j + 1];
                         // Last record from overflow is now free
                         overflowBuffer[j].key = overflowBuffer[j].pointer = -1;
                         overflowBuffer[j].voltage = overflowBuffer[j].amperage = 0;
                         deleted = true;
-                        recordsInOverflow--;
+                        globalInf.recordsInOverflow--;
                     }
                     else pointer = overflowBuffer[j].pointer;
                     j++;
@@ -746,16 +749,16 @@ bool deleteRecord(int key, int& read, int& write) {
     write++;
 
     // Rewriting rest of the primary area
-    for (int i = page + 1; i < maxPrimary / PAGESIZE; i++) {
+    for (int i = page + 1; i < globalInf.maxPrimary / PAGESIZE; i++) {
         fread(primaryBuffer, RECORDSIZE, PAGESIZE, fileRead);
         read++;
         fwrite(primaryBuffer, RECORDSIZE, PAGESIZE, fileWrite);
         write++;
     }
-    recordsInPrimary--;
+    globalInf.recordsInPrimary--;
 
     // Rewriting the overflow
-    fwrite(overflowBuffer, RECORDSIZE, maxOverflow, fileWrite);
+    fwrite(overflowBuffer, RECORDSIZE, globalInf.maxOverflow, fileWrite);
     write++;
 
     delete[] primaryBuffer;
