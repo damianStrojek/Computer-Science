@@ -68,14 +68,14 @@ int main() {
     if (choice == 1) {
         while (!escape) {
             read = write = 0;
-            std::cout << "\n\tWhat do you want to do?\n\t'dod vol amp' - Adding new record" <<
+            std::cout << "\n\tWhat do you want to do?\n\t'add vol amp' - Adding new record" <<
                 "\n\t'upd key vol amp' - Update existing record\n\t'read key' - Read existing" <<
                 " record\n\t'del key' - Delete existing record\n\t'reorg' - Reorganise file" <<
                 "\n\t'show file' - Show data file in the order of keys\n\t'show index' - Show" <<
                 " index file\n\t'quit' - End the program\n\n\tYour command: ";
             std::cin >> command;
             // Add new record
-            if (command == "dod") {
+            if (command == "add") {
                 std::cin >> voltage >> amperage;
                 addNewRecord(voltage, amperage, read, write);
                 std::cout << "\n\n\tADDING NEW RECORD\n\n\tReads = " << read << " Writes = "
@@ -130,7 +130,7 @@ int main() {
             read = write = 0;
             inputFile >> command;
             // Add new record
-            if (command == "dod") {
+            if (command == "add") {
                 inputFile >> voltage >> amperage;
                 addNewRecord(voltage, amperage, read, write);
                 std::cout << "\n\n\tADDING NEW RECORD\n\n\tReads = " << read << " Writes = "
