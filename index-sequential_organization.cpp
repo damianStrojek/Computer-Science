@@ -55,12 +55,128 @@ void update(int key, double voltage, double amperage);
 int main() {
     // We need to initialize with start values
     initialize();
-   
-    bool escape = true;
+
+    bool escape = false;
     int choice, key, read, write;
     double voltage, amperage;
+    std::string command;
 
+    std::cout << "\tDAMIAN STROJEK S184407\n\tINDEX-SEQUENTIAL FILE ORGANISATION\n";
+    std::cout << "\n\tChoose data source:\n\t\t1 - Keyboard\n\t\t2 - File\n\n\tChoice: ";
+    std::cin >> choice;
 
+    if (choice == 1) {
+        while (!escape) {
+            read = write = 0;
+            std::cout << "\n\tWhat do you want to do?\n\t'dod vol amp' - Adding new record" <<
+                "\n\t'upd key vol amp' - Update existing record\n\t'read key' - Read existing" <<
+                " record\n\t'del key' - Delete existing record\n\t'reorg' - Reorganise file" <<
+                "\n\t'show file' - Show data file in the order of keys\n\t'show index' - Show" <<
+                " index file\n\t'quit' - End the program\n\n\tYour command: ";
+            std::cin >> command;
+            // Add new record
+            if (command == "dod") {
+                std::cin >> voltage >> amperage;
+                addNewRecord(voltage, amperage, read, write);
+                std::cout << "\n\n\tADDING NEW RECORD\n\n\tReads = " << read << " Writes = "
+                    << write << "\n";
+            }
+            // Update existing record with key 'key'
+            else if (command == "upd") {
+                std::cin >> key >> voltage >> amperage;
+                update(key, voltage, amperage);
+            }
+            // Read existing record with key 'key'
+            else if (command == "read") {
+                std::cin >> key;
+                readRecord(key);
+            }
+            // Delete existing record with key 'key'
+            else if (command == "del") {
+                std::cin >> key;
+                if (!deleteRecord(key, read, write))
+                    std::cout << "\n\tThere is no record with inputted key.\n";
+                std::cout << "\n\n\tDELETING EXISTING RECORD\n\n\tReads = " << read
+                    << " Writes = " << write << "\n";
+            }
+            else if (command == "reorg") {
+                reorganize(read, write);
+                std::cout << "\n\n\tREORGANIZATION\n\n\tReads = " << read
+                    << " Writes = " << write << "\n";
+            }
+            else if (command == "show") {
+                std::cin >> command;
+                if (command == "file") showFile();
+                else showIndex();
+            }
+            else if (command == "quit") {
+                escape = true;
+            }
+            else {
+                std::cout << "\n\tChoose one of the available options.\n";
+            }
+        }
+    }
+    else if (choice == 2) {
+        std::cin >> command;
+        std::ifstream inputFile;
+        inputFile.open(command);
+        if (!inputFile.is_open()) {
+            std::cout << "\n\t!!! Couldn't open file " << command << ".\n";
+            return;
+        }
+
+        while (!escape) {
+            read = write = 0;
+            inputFile >> command;
+            // Add new record
+            if (command == "dod") {
+                inputFile >> voltage >> amperage;
+                addNewRecord(voltage, amperage, read, write);
+                std::cout << "\n\n\tADDING NEW RECORD\n\n\tReads = " << read << " Writes = "
+                    << write << "\n";
+            }
+            // Update existing record with key 'key'
+            else if (command == "upd") {
+                inputFile >> key >> voltage >> amperage;
+                update(key, voltage, amperage);
+            }
+            // Read existing record with key 'key'
+            else if (command == "read") {
+                inputFile >> key;
+                readRecord(key);
+            }
+            // Delete existing record with key 'key'
+            else if (command == "del") {
+                inputFile >> key;
+                if (!deleteRecord(key, read, write))
+                    std::cout << "\n\tThere is no record with inputted key.\n";
+                std::cout << "\n\n\tDELETING EXISTING RECORD\n\n\tReads = " << read
+                    << " Writes = " << write << "\n";
+            }
+            else if (command == "reorg") {
+                reorganize(read, write);
+                std::cout << "\n\n\tREORGANIZATION\n\n\tReads = " << read
+                    << " Writes = " << write << "\n";
+            }
+            else if (command == "show") {
+                inputFile >> command;
+                if (command == "file") showFile();
+                else showIndex();
+            }
+            else if (command == "quit") {
+                escape = true;
+            }
+            else {
+                std::cout << "\n\tThere is a typo in inputted file.\n";
+            }
+        }
+        inputFile.close();
+    }
+    else {
+        std::cout << "You need to choose either 1 or 2.\n";
+    }
+    system("pause");
     return 0;
 };
 
@@ -436,7 +552,7 @@ void reorganize(int& read, int& write) {
             saveBuffer[counter] = primaryBuffer[k];
             counter++;
             pointer = primaryBuffer[k].pointer;
-            
+
             // If record from primary area is pointing on the page from overflow
             while (pointer != -1 && l < maxOverflow) {
                 // If the save buffer is "alpha filled", we write it to the file
@@ -519,8 +635,8 @@ void readRecord(int key) {
                     break;
             }
         }
-        
-        if(buffer[i].key == key)
+
+        if (buffer[i].key == key)
             std::cout << buffer[i].key << " " << buffer[i].voltage << " " << buffer[i].amperage << "\n";
         else
             std::cout << "There is no record with specified key.\n";
@@ -537,7 +653,7 @@ bool deleteRecord(int key, int& read, int& write) {
         std::cout << "You can't delete record with key 0.\n";
         return false;
     }
-    
+
     int pointer, page = searchIndex(key, read);
     bool deleted = false;
 
