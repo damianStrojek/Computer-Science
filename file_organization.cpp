@@ -121,11 +121,12 @@ int main() {
         }
     }
     else if (choice == 2) {
+        std::cout << "\n\n\tFile you want to open: ";
         std::cin >> command;
         std::ifstream inputFile;
         inputFile.open(command);
         if (!inputFile.is_open()) {
-            std::cout << "\n\t!!! Couldn't open file " << command << ".\n";
+            std::cout << "\n\t!!! Couldn't open file " << command << " !!!.\n";
             return 0;
         }
 
