@@ -472,7 +472,7 @@ void showIndex() {
     read++;
     while (l) {
         for (k = 0; k < l; k++)
-            std::cout << buffer[k].key << " " << buffer[k].page << "\n";
+            std::cout << "\t\t" << buffer[k].key << " " << buffer[k].page << "\n";
         l = fread(buffer, INDEXSIZE, PAGESIZE, file);
         read++;
     }
@@ -503,16 +503,20 @@ void showFile() {
         read++;
         for (int k = 0; k < PAGESIZE; k++) {
             // Show record from primary area
-            std::cout << primaryBuffer[k].key << " " << primaryBuffer[k].voltage <<
-                " " << primaryBuffer[k].amperage << "\n";
+            std::cout << "\t\t" << primaryBuffer[k].key << " " << primaryBuffer[k].voltage <<
+                " " << primaryBuffer[k].amperage;
             pointer = primaryBuffer[k].pointer;
+            if (pointer != -1) std::cout << " Pointer: " << primaryBuffer[k].pointer << "\n";
+            else std::cout << "\n";
             // If pointer is pointing to record in overflow 
             // we need to read records from overflow
-            while (l < globalInf.maxOverflow && overflowBuffer[l].key != -1) {
+            while (l < globalInf.maxOverflow && pointer != -1) {
                 if (overflowBuffer[l].key == pointer) {
-                    std::cout << overflowBuffer[k].key << " " << overflowBuffer[k].voltage <<
-                        " " << overflowBuffer[k].amperage << "\n";
-                    pointer = overflowBuffer[k].pointer;
+                    std::cout << "\t\t" << overflowBuffer[l].key << " " << overflowBuffer[l].voltage <<
+                        " " << overflowBuffer[l].amperage;
+                    pointer = overflowBuffer[l].pointer;
+                    if (pointer != -1) std::cout << " Pointer: " << overflowBuffer[l].pointer << "\n";
+                    else std::cout << "\n";
                 }
                 l++;
             }
