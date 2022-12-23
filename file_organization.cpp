@@ -229,6 +229,7 @@ void addNewRecord(double voltage, double amperage, int& read, int& write) {
     Record* buffer = new Record[PAGESIZE];          // Buffer for data file
     FILE* fileRead = fopen(DATAFILE, "rb");         // Data file
     FILE* fileWrite = fopen(TEMPDATAFILE, "wb");    // Temporary file
+    // CZEMU ZWRACA NIE WIADOMO CO
     page = searchIndex(key, read);                  // Looking for specific page
 
     // Rewriting whole pages from primary area to temporary file (to specific page)
@@ -411,7 +412,7 @@ int searchIndex(int key, int& read) {
         read++;
 
         for (k = 0; k < l; k++) {
-            if (buffer[k].key > key) {
+            if (buffer[k].key >= key) {
                 page = buffer[k].page - 1;
                 break;
             }
@@ -465,9 +466,6 @@ void showIndex() {
     FILE* file = fopen(INDEXFILE, "rb");    // Index file
     std::cout << "\n\tSHOW INDEX FILE\n\n";
 
-    // ----------------------------------------------------
-    // TO-DO: Maybe different order in this while
-    // ----------------------------------------------------
     l = fread(buffer, INDEXSIZE, PAGESIZE, file);
     read++;
     while (l) {
@@ -484,10 +482,10 @@ void showIndex() {
 
 // Show file
 void showFile() {
-    int read = 0, i = globalInf.maxPrimary / PAGESIZE, l = 0, pointer;
-    Record* primaryBuffer = new Record[PAGESIZE];       // Page buffer of primary area
-    Record* overflowBuffer = new Record[globalInf.maxOverflow];   // Page buffer of overflow area
-    FILE* file = fopen(DATAFILE, "rb");                 // Data file
+    int read = 0, i = globalInf.maxPrimary / PAGESIZE, pointer, l = 0;
+    Record* primaryBuffer = new Record[PAGESIZE];                // Page buffer of primary area
+    Record* overflowBuffer = new Record[globalInf.maxOverflow];  // Page buffer of overflow area
+    FILE* file = fopen(DATAFILE, "rb");                          // Data file
 
     // Load overflow to buffer
     fseek(file, globalInf.maxPrimary * RECORDSIZE, SEEK_SET);
@@ -498,6 +496,7 @@ void showFile() {
     std::cout << "\n\tSHOW FILE\n\n";
 
     for (int j = 0; j < i; j++) {
+        std::cout << "\n\tPAGE " << j + 1 << "\n";
         // Load page from primary area
         fread(primaryBuffer, RECORDSIZE, PAGESIZE, file);
         read++;
@@ -506,21 +505,18 @@ void showFile() {
             std::cout << "\t\t" << primaryBuffer[k].key << " " << primaryBuffer[k].voltage <<
                 " " << primaryBuffer[k].amperage;
             pointer = primaryBuffer[k].pointer;
-            if (pointer != -1) std::cout << " Pointer: " << primaryBuffer[k].pointer << "\n";
-            else std::cout << "\n";
-            // If pointer is pointing to record in overflow 
-            // we need to read records from overflow
-            while (l < globalInf.maxOverflow && pointer != -1) {
-                if (overflowBuffer[l].key == pointer) {
-                    std::cout << "\t\t" << overflowBuffer[l].key << " " << overflowBuffer[l].voltage <<
-                        " " << overflowBuffer[l].amperage;
-                    pointer = overflowBuffer[l].pointer;
-                    if (pointer != -1) std::cout << " Pointer: " << overflowBuffer[l].pointer << "\n";
-                    else std::cout << "\n";
-                }
-                l++;
-            }
+            std::cout << " P: " << primaryBuffer[k].pointer << "\n";
         }
+    }
+
+    std::cout << "\n\tOVERFLOW\n\n";
+
+    while (l < globalInf.maxOverflow) {
+        std::cout << "\t\t" << overflowBuffer[l].key << " " << overflowBuffer[l].voltage <<
+            " " << overflowBuffer[l].amperage;
+        pointer = overflowBuffer[l].pointer;
+        std::cout << " P: " << overflowBuffer[l].pointer << "\n";
+        l++;
     }
 
     fclose(file);
@@ -532,11 +528,11 @@ void showFile() {
 // Reorganize both areas -> primary = primary + overflow, overflow = 0
 void reorganize(int& read, int& write) {
     int counter = 0, i = globalInf.maxPrimary / PAGESIZE, l = 0, pointer, pages = 0;
-    Record* primaryBuffer = new Record[PAGESIZE];       // Buffer of pages from primary area
-    Record* overflowBuffer = new Record[globalInf.maxOverflow];   // Buffer of pages from overflow area
-    Record* saveBuffer = new Record[PAGESIZE];          // Buffer to save to
-    FILE* fileRead = fopen(DATAFILE, "rb");             // Data file to read from
-    FILE* fileWrite = fopen(TEMPDATAFILE, "wb");        // Save file to save to - will need renaming
+    Record* primaryBuffer = new Record[PAGESIZE];               // Buffer of pages from primary area
+    Record* overflowBuffer = new Record[globalInf.maxOverflow]; // Buffer of pages from overflow area
+    Record* saveBuffer = new Record[PAGESIZE];                  // Buffer to save to
+    FILE* fileRead = fopen(DATAFILE, "rb");                     // Data file to read from
+    FILE* fileWrite = fopen(TEMPDATAFILE, "wb");                // Save file to save to - will need renaming
 
     // Loading up overflow
     fseek(fileRead, globalInf.maxPrimary * RECORDSIZE, SEEK_SET);
@@ -558,10 +554,12 @@ void reorganize(int& read, int& write) {
                 pages++;
             }
             saveBuffer[counter] = primaryBuffer[k];
+            std::cout << "\n" << saveBuffer[counter].key << " " << saveBuffer[counter].voltage << " " << saveBuffer[counter].amperage << "\n";
             counter++;
             pointer = primaryBuffer[k].pointer;
 
             // If record from primary area is pointing on the page from overflow
+            // TO-DO czemu on przepisuje WSZYSTKO tylko po counterze - trzeba sprawdzac gdzie sie to wpsiuje
             while (pointer != -1 && l < globalInf.maxOverflow) {
                 // If the save buffer is "alpha filled", we write it to the file
                 if (counter == PAGESIZE * ALFA) {
@@ -573,12 +571,17 @@ void reorganize(int& read, int& write) {
                 }
                 // Saving record from overflow to save buffer
                 saveBuffer[counter] = overflowBuffer[l];
-                counter++;
                 pointer = overflowBuffer[l].pointer;
+                counter++;
                 l++;
             }
+
+            
         }
+
+        
     }
+
     // If there is something inside of the save buffer
     if (counter > 0) {
         for (int m = 0; m < counter; m++) saveBuffer[m].pointer = -1;
