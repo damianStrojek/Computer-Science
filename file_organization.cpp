@@ -407,12 +407,12 @@ int searchIndex(int key, int& read) {
     int i = globalInf.maxPrimary / PAGESIZE, k, l, page = -1;
 
     // We are loading indexes by pages and looking for specific index
+    l = fread(buffer, INDEXSIZE, PAGESIZE, file);
     while (i--) {
-        l = fread(buffer, INDEXSIZE, PAGESIZE, file);
         read++;
 
         for (k = 0; k < l; k++) {
-            if (buffer[k].key >= key) {
+            if (buffer[k].key > key) {
                 page = buffer[k].page - 1;
                 break;
             }
@@ -421,22 +421,25 @@ int searchIndex(int key, int& read) {
         if (page != -1) break;
     }
 
-    fclose(file);
     // If primary area is empty
-    if (page == -1) page = buffer[l - 1].page;
+    if (page == -1 && l > 0) {
+        page = buffer[l - 1].page;
+    }
+
+    fclose(file);
     delete[] buffer;
 
-    // We are returning number of page that has specific key
+    // We are returning number of page that has/should have specific key
     return page;
 };
 
 // Creating Index based upon records in primary area
 void createIndex(int& read, int& write) {
-    int i = globalInf.maxPrimary / PAGESIZE, j, k;        // Number of records
-    Record* bufferOne = new Record[PAGESIZE];   // Buffer of data file
-    Index* bufferTwo = new Index[PAGESIZE];     // Buffer of index file
-    FILE* fileOne = fopen(DATAFILE, "rb");      // File with data
-    FILE* fileTwo = fopen(INDEXFILE, "wb");     // Index file 
+    int i = globalInf.maxPrimary / PAGESIZE, j, k;      // Number of records
+    Record* bufferOne = new Record[PAGESIZE];           // Buffer of data file
+    Index* bufferTwo = new Index[PAGESIZE];             // Buffer of index file
+    FILE* fileOne = fopen(DATAFILE, "rb");              // File with data
+    FILE* fileTwo = fopen(INDEXFILE, "wb");             // Index file 
 
     // We are loading by pages and saving first key on every page to index
     for (j = 0, k = 0; j < i; j++, k++) {
