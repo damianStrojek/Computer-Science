@@ -54,6 +54,7 @@ void reorganize(int& read, int& write);
 void readRecord(int key);
 bool deleteRecord(int key, int& read, int& write);
 void update(int key, double voltage, double amperage);
+void clearBuffer(Record* buffer, int counter);
 
 int main() {
     // We need to initialize with start values
@@ -550,25 +551,32 @@ void reorganize(int& read, int& write) {
         for (int k = 0; k < PAGESIZE; k++) {
             // If the save buffer is "alpha filled", we write it to the file
             if (counter == PAGESIZE * ALFA) {
+                std::cout << "\nALPHA FILLED TEST\n";
                 for (int m = 0; m < counter; m++) saveBuffer[m].pointer = -1;
                 fwrite(saveBuffer, RECORDSIZE, PAGESIZE, fileWrite);
                 write++;
+
+                // Clear the save Buffer so there is no double values
+                clearBuffer(saveBuffer, counter);
+
                 counter = 0;
                 pages++;
             }
             saveBuffer[counter] = primaryBuffer[k];
-            std::cout << "\n" << saveBuffer[counter].key << " " << saveBuffer[counter].voltage << " " << saveBuffer[counter].amperage << "\n";
             counter++;
             pointer = primaryBuffer[k].pointer;
 
             // If record from primary area is pointing on the page from overflow
-            // TO-DO czemu on przepisuje WSZYSTKO tylko po counterze - trzeba sprawdzac gdzie sie to wpsiuje
             while (pointer != -1 && l < globalInf.maxOverflow) {
                 // If the save buffer is "alpha filled", we write it to the file
                 if (counter == PAGESIZE * ALFA) {
                     for (int m = 0; m < counter; m++) saveBuffer[m].pointer = -1;
                     fwrite(saveBuffer, RECORDSIZE, PAGESIZE, fileWrite);
                     write++;
+
+                    // Clear the save Buffer so there is no double values
+                    clearBuffer(saveBuffer, counter);
+
                     counter = 0;
                     pages++;
                 }
@@ -578,20 +586,18 @@ void reorganize(int& read, int& write) {
                 counter++;
                 l++;
             }
-
-            
         }
-
-        
     }
 
-    // If there is something inside of the save buffer
+    // If there is something in saveBuffer it means we have to write it to the end
     if (counter > 0) {
         for (int m = 0; m < counter; m++) saveBuffer[m].pointer = -1;
         fwrite(saveBuffer, RECORDSIZE, PAGESIZE, fileWrite);
         write++;
         pages++;
     }
+
+    // OVERFLOW TRZEBA SIE POZBYC JAK JEST JUZ WYCZYSZCZONE WSZYSTKO 
 
     delete[] primaryBuffer;
     delete[] overflowBuffer;
@@ -608,6 +614,16 @@ void reorganize(int& read, int& write) {
     globalInf.recordsInOverflow = 0;
     // Creating new index on the basis of changed values
     createIndex(read, write);
+};
+
+// Clear the buffer so there is no double values saved to output
+void clearBuffer(Record *buffer, int counter) {
+    for (int i = 0; i < counter; i++) {
+        buffer[i].amperage = 0;
+        buffer[i].voltage = 0;
+        buffer[i].key = -1;
+        buffer[i].pointer = -1;
+    }
 };
 
 // Read record with specified key
